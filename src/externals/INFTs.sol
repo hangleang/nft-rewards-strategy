@@ -2,11 +2,9 @@
 pragma solidity ^0.8.17;
 
 interface INFTs {
-    function lazyMint(
-        uint256 amount,
-        string calldata baseURIForTokens,
-        bytes calldata extraData
-    ) external returns (uint256 batchId);
+    function lazyMint(uint256 amount, string calldata baseURIForTokens, bytes calldata extraData)
+        external
+        returns (uint256 batchId);
 
     function authorizerForBatch(uint256 _batchId) external view returns (address);
 
@@ -20,16 +18,9 @@ interface INFTs {
         uint256 pricePerToken,
         bytes32[] calldata proofs,
         bytes memory data
-    )
-        external;
+    ) external;
 
-    function claim(
-        address receiver,
-        uint256 tokenId,
-        uint256 quantity,
-        bytes32[] calldata proofs,
-        bytes memory data
-    )
+    function claim(address receiver, uint256 tokenId, uint256 quantity, bytes32[] calldata proofs, bytes memory data)
         external
         payable;
 
@@ -40,9 +31,7 @@ interface INFTs {
         address currency,
         uint256 pricePerToken,
         bytes32[] calldata proofs
-    )
-        external
-        view;
+    ) external view;
 
     function getSupplyClaimedByWallet(uint256 _tokenId, address _claimer) external view returns (uint256);
 

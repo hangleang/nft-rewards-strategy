@@ -2,14 +2,16 @@
 pragma solidity ^0.8.17;
 
 // Core Contracts
-import {DonationVotingMerkleDistributionBaseStrategy} from "allo/contracts/strategies/donation-voting-merkle-base/DonationVotingMerkleDistributionBaseStrategy.sol";
+import {DonationVotingMerkleDistributionBaseStrategy} from
+    "allo/contracts/strategies/donation-voting-merkle-base/DonationVotingMerkleDistributionBaseStrategy.sol";
 
 // Interfaces
 import {INFTs} from "./externals/INFTs.sol";
 import {ISignatureTransfer} from "permit2/ISignatureTransfer.sol";
 
 // External
-import {ReentrancyGuardUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 // Libraries
 import {Metadata} from "allo/contracts/core/libraries/Metadata.sol";
@@ -46,17 +48,17 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     address public nftAddress;
 
     /// @notice 'recipientId' => 'batchId'.
-    mapping (address => uint256) public recipientIdToBatchId;
+    mapping(address => uint256) public recipientIdToBatchId;
 
     /// @notice 'recipientId' => 'token' => 'amount'.
-    mapping (address => mapping(address => uint256)) public claims;
+    mapping(address => mapping(address => uint256)) public claims;
 
     /// ===============================
     /// ========= Initialize ==========
     /// ===============================
 
-    constructor(address _allo, string memory _name, ISignatureTransfer _permit2) 
-        DonationVotingMerkleDistributionBaseStrategy(_allo, _name, _permit2) 
+    constructor(address _allo, string memory _name, ISignatureTransfer _permit2)
+        DonationVotingMerkleDistributionBaseStrategy(_allo, _name, _permit2)
     {}
 
     /// @notice Initializes the strategy
@@ -94,9 +96,11 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
 
         // decode data custom to this strategy
         if (useRegistryAnchor) {
-            (recipientId, recipientAddress, metadata, amount, fee) = abi.decode(_data, (address, address, Metadata, uint256, uint96));
+            (recipientId, recipientAddress, metadata, amount, fee) =
+                abi.decode(_data, (address, address, Metadata, uint256, uint96));
         } else {
-            (recipientAddress, registryAnchor, metadata, amount, fee) = abi.decode(_data, (address, address, Metadata, uint256, uint96));
+            (recipientAddress, registryAnchor, metadata, amount, fee) =
+                abi.decode(_data, (address, address, Metadata, uint256, uint96));
 
             // Set this to 'true' if the registry anchor is not the zero address
             bool isUsingRegistryAnchor = registryAnchor != address(0);
@@ -125,7 +129,8 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// @param _sender The sender of the allocation
     /// @custom:data (address recipientId, Permit2Data p2data, uint256 tokenId, uint256 qty, bytes32[] proofs)
     function _beforeAllocate(bytes memory _data, address _sender) internal override {
-        (, Permit2Data memory p2Data, uint256 tokenId, uint256 qty, bytes32[] memory proofs) = abi.decode(_data, (address, Permit2Data, uint256, uint256, bytes32[]));
+        (, Permit2Data memory p2Data, uint256 tokenId, uint256 qty, bytes32[] memory proofs) =
+            abi.decode(_data, (address, Permit2Data, uint256, uint256, bytes32[]));
         uint256 amount = p2Data.permit.permitted.amount;
         address token = p2Data.permit.permitted.token;
         uint256 price = amount / qty;
@@ -142,7 +147,7 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// @notice After allocation hook to transfer & lock tokens within the contract, mint NFT back to the caller.
     /// @param _data The encoded recipientId, amount and token
     /// @param _sender The sender of the allocation
-    /// @custom:data 
+    /// @custom:data
     function _afterAllocate(bytes memory _data, address _sender) internal override {
         // Decode the '_data' to get the recipientId, amount and token
         (address recipientId, Permit2Data memory p2Data) = abi.decode(_data, (address, Permit2Data));
@@ -178,15 +183,21 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// ========== Override ===========
     /// ===============================
 
-    function _registerRecipient(bytes memory _data, address _sender) internal override onlyActiveRegistration returns (address) {
-        (address recipientId, address recipientAddress, Metadata memory metadata, ) = abi.decode(_data, (address, address, Metadata, bytes));
+    function _registerRecipient(bytes memory _data, address _sender)
+        internal
+        override
+        onlyActiveRegistration
+        returns (address)
+    {
+        (address recipientId, address recipientAddress, Metadata memory metadata,) =
+            abi.decode(_data, (address, address, Metadata, bytes));
         bytes memory registerData = abi.encode(recipientId, recipientAddress, metadata);
 
         return super._registerRecipient(registerData, _sender);
     }
 
     function _allocate(bytes memory _data, address _sender) internal override onlyActiveAllocation {
-        (address recipientId, Permit2Data memory p2Data, ) = abi.decode(_data, (address, Permit2Data, bytes));
+        (address recipientId, Permit2Data memory p2Data,) = abi.decode(_data, (address, Permit2Data, bytes));
         bytes memory allocationData = abi.encode(recipientId, p2Data);
 
         super._allocate(allocationData, _sender);
