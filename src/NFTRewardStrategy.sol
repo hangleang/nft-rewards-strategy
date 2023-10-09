@@ -29,8 +29,23 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         address token;
     }
 
+    struct ClaimNFT {
+        address receiver;
+        uint256 tokenId;
+        uint256 quantity;
+        bytes32[] proofs;
+        uint256 deadline;
+        bytes signature;
+    }
+
     /// ===============================
-    /// ========== Events =============
+    /// =========== Errors ============
+    /// ===============================
+
+    error INVALID_TOKEN_ID();
+
+    /// ===============================
+    /// =========== Events ============
     /// ===============================
 
     /// @notice Emitted when a recipient has claimed their allocated funds
@@ -41,7 +56,7 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     event Claimed(address indexed recipientId, address recipientAddress, uint256 amount, address indexed token);
 
     /// ===============================
-    /// ========= Storage ==========
+    /// =========== Storage ===========
     /// ===============================
 
     /// @notice the NFTReward address
@@ -74,6 +89,79 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         __DonationVotingStrategy_init(_poolId, initializeData);
 
         emit Initialized(_poolId, _data);
+    }
+
+    /// ===============================
+    /// ========== External ===========
+    /// ===============================
+
+    /// @notice Claim allocated tokens for recipients.
+    /// @dev Uses the merkle root to verify the claims. Allocation must have ended to claim.
+    /// @param _claims Claims to be claimed
+    function claim(Claim[] calldata _claims) external nonReentrant onlyAfterAllocation {
+        uint256 claimsLength = _claims.length;
+
+        // Loop through the claims
+        for (uint256 i; i < claimsLength;) {
+            Claim memory singleClaim = _claims[i];
+            Recipient memory recipient = _recipients[singleClaim.recipientId];
+            uint256 amount = claims[singleClaim.recipientId][singleClaim.token];
+
+            // If the claim amount is zero this will revert
+            if (amount == 0) {
+                revert INVALID();
+            }
+
+            address recipientId = singleClaim.recipientId;
+            address token = singleClaim.token;
+
+            /// Delete the claim from the mapping
+            delete claims[recipientId][token];
+
+            // Transfer the tokens to the recipient
+            _transferAmount(token, recipient.recipientAddress, amount);
+
+            // Emit that the tokens have been claimed and sent to the recipient
+            emit Claimed(recipientId, recipient.recipientAddress, amount, token);
+            unchecked {
+                i++;
+            }
+        }
+    }
+
+    function canAllocateTo(
+        address _recipientId,
+        uint256 _tokenId,
+        uint256 _quantity,
+        address _currency,
+        uint256 _pricePerToken,
+        bytes32[] calldata _proofs
+    ) public view onlyActiveAllocation returns (bool canAllocate) {
+        return _canAllocateTo(_recipientId, _tokenId, _quantity, _currency, _pricePerToken, _proofs);
+    }
+
+    /// ===============================
+    /// ========== Internal ===========
+    /// ===============================
+
+    function _canAllocateTo(
+        address _recipientId,
+        uint256 _tokenId,
+        uint256 _quantity,
+        address _currency,
+        uint256 _pricePerToken,
+        bytes32[] calldata _proofs
+    ) internal view returns (bool canAllocate) {
+        uint256 batchId = recipientIdToBatchId[_recipientId];
+        if (_tokenId > batchId) {
+            return false;
+        }
+
+        try INFTs(nftAddress).verifyClaim(msg.sender, _tokenId, _quantity, _currency, _pricePerToken, _proofs) {
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     /// ===============================
@@ -119,8 +207,11 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
             protocol = "ipfs://";
         }
 
-        bytes memory data = abi.encodePacked(_sender, fee);
-        uint256 batchId = INFTs(nftAddress).lazyMint(amount, string.concat(protocol, metadata.pointer, "/"), data);
+        // NOTE: the royalty info need to be packed encoded since we decode the data by bytes
+        // `_sender` is used to be a royalty recipient, and also authorizer for the batch token
+        bytes memory royaltyInfodata = abi.encodePacked(_sender, fee);
+        uint256 batchId =
+            INFTs(nftAddress).lazyMint(amount, string.concat(protocol, metadata.pointer, "/"), royaltyInfodata);
         recipientIdToBatchId[recipientId] = batchId;
     }
 
@@ -128,20 +219,21 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// @param _data The data to be decoded.
     /// @param _sender The sender of the allocation
     /// @custom:data (address recipientId, Permit2Data p2data, uint256 tokenId, uint256 qty, bytes32[] proofs)
-    function _beforeAllocate(bytes memory _data, address _sender) internal override {
-        (, Permit2Data memory p2Data, uint256 tokenId, uint256 qty, bytes32[] memory proofs) =
-            abi.decode(_data, (address, Permit2Data, uint256, uint256, bytes32[]));
+    function _beforeAllocate(bytes memory _data, address _sender) internal view override {
+        (address recipientId, Permit2Data memory p2Data, ClaimNFT memory claimNFTData) =
+            abi.decode(_data, (address, Permit2Data, ClaimNFT));
+
+        uint256 batchId = recipientIdToBatchId[recipientId];
+        if (claimNFTData.tokenId > batchId) {
+            revert INVALID_TOKEN_ID();
+        }
+
         uint256 amount = p2Data.permit.permitted.amount;
         address token = p2Data.permit.permitted.token;
-        uint256 price = amount / qty;
+        uint256 price = amount / claimNFTData.quantity;
 
-        // verify claim for amount of tokenId
-        // INFTs(nftAddress).verifyClaim(tokenId, _sender, qty, token, price, proofs);
-        if (token == NATIVE) {
-            INFTs(nftAddress).claim{value: msg.value}(_sender, tokenId, qty, proofs, bytes(""));
-        } else {
-            INFTs(nftAddress).claim(_sender, tokenId, qty, token, price, proofs, bytes(""));
-        }
+        // verify claim for amount of tokenId with given value
+        INFTs(nftAddress).verifyClaim(_sender, claimNFTData.tokenId, claimNFTData.quantity, token, price, claimNFTData.proofs);
     }
 
     /// @notice After allocation hook to transfer & lock tokens within the contract, mint NFT back to the caller.
@@ -150,21 +242,38 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// @custom:data
     function _afterAllocate(bytes memory _data, address _sender) internal override {
         // Decode the '_data' to get the recipientId, amount and token
-        (address recipientId, Permit2Data memory p2Data) = abi.decode(_data, (address, Permit2Data));
+        (address recipientId, Permit2Data memory p2Data, ClaimNFT memory claimNFTData) =
+            abi.decode(_data, (address, Permit2Data, ClaimNFT));
 
         // Get the token address
         address token = p2Data.permit.permitted.token;
         uint256 amount = p2Data.permit.permitted.amount;
+        uint256 price = amount / claimNFTData.quantity;
 
         // Update the total payout amount for the claim
         claims[recipientId][token] += amount;
+
+        // Form claim data to be attach with `claim` call
+        INFTs.Claim memory claimData = INFTs.Claim({
+            sender: _sender,
+            receiver: claimNFTData.receiver,
+            tokenId: claimNFTData.tokenId,
+            quantity: claimNFTData.quantity,
+            currency: token,
+            pricePerToken: price,
+            proofs: claimNFTData.proofs,
+            deadline: claimNFTData.deadline
+        });
 
         if (token == NATIVE) {
             if (msg.value < amount) {
                 revert AMOUNT_MISMATCH();
             }
+
+            INFTs(nftAddress).claim{value: msg.value}(claimData, claimNFTData.signature);
             SafeTransferLib.safeTransferETH(address(this), amount);
         } else {
+            INFTs(nftAddress).claim(claimData, claimNFTData.signature);
             PERMIT2.permitTransferFrom(
                 // The permit message.
                 p2Data.permit,
@@ -195,8 +304,8 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
 
         return super._registerRecipient(registerData, _sender);
     }
-
-    function _allocate(bytes memory _data, address _sender) internal override onlyActiveAllocation {
+ 
+    function _allocate(bytes memory _data, address _sender) internal override onlyActiveAllocation nonReentrant {
         (address recipientId, Permit2Data memory p2Data,) = abi.decode(_data, (address, Permit2Data, bytes));
         bytes memory allocationData = abi.encode(recipientId, p2Data);
 
