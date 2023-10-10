@@ -2,3 +2,4 @@ ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
 allo/=lib/allo-v2/
 permit2/=lib/allo-v2/lib/permit2/src/interfaces/
+charii-contract/=lib/charii-contract/src/

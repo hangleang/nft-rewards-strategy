@@ -4,25 +4,19 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 
 import {Accounts} from "allo/test/foundry/shared/Accounts.sol";
-import {INFTs} from "src/externals/INFTs.sol";
+// import {INFTs} from "src/externals/INFTs.sol";
+import {MockNFTs} from "../mocks/MockNFTs.sol";
 
 contract NFTsSetup is Test, Accounts {
-    INFTs internal _nfts;
+    MockNFTs internal _nfts;
 
-    function __AlloSetup(address _registry) internal {
-        vm.startPrank(allo_owner());
-        // _nfts = new INFTs();
-
-        // _allo_.initialize(
-        //     _registry, // _registry
-        //     allo_treasury(), // _treasury
-        //     1e16, // _percentFee
-        //     0 // _baseFee
-        // );
+    function __NFTsSetup(address owner) internal {
+        vm.startPrank(owner);
+        _nfts = new MockNFTs(owner);
         vm.stopPrank();
     }
 
-    function nfts() public view returns (INFTs) {
+    function nfts() public view returns (MockNFTs) {
         return _nfts;
     }
 }
