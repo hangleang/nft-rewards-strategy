@@ -7,3 +7,6 @@
 [submodule "lib/allo-v2"]
 	path = lib/allo-v2
 	url = https://github.com/allo-protocol/allo-v2
+[submodule "lib/charii-contract"]
+	path = lib/charii-contract
+	url = https://github.com/dreamsLAB-kh/charii-contract

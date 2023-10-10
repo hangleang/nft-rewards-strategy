@@ -84,9 +84,10 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     ///               uint64 _registrationEndTime, uint64 _allocationStartTime, uint64 _allocationEndTime,
     ///               address[] memory _allowedTokens)
     function initialize(uint256 _poolId, bytes memory _data) external virtual override onlyAllo {
-        (address _nftAddress, InitializeData memory initializeData) = abi.decode(_data, (address, InitializeData));
-        nftAddress = _nftAddress;
-        __DonationVotingStrategy_init(_poolId, initializeData);
+        (InitializeStrategyData memory initStrategyData) = abi.decode(_data, (InitializeStrategyData));
+        // address _nftAddress, InitializeData memory initializeData
+        nftAddress = initStrategyData.nftAddress;
+        __DonationVotingStrategy_init(_poolId, initStrategyData.initData);
 
         emit Initialized(_poolId, _data);
     }
@@ -298,15 +299,15 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         onlyActiveRegistration
         returns (address)
     {
-        (address recipientId, address recipientAddress, Metadata memory metadata,) =
-            abi.decode(_data, (address, address, Metadata, bytes));
+        (address recipientId, address recipientAddress, Metadata memory metadata) =
+            abi.decode(_data, (address, address, Metadata));
         bytes memory registerData = abi.encode(recipientId, recipientAddress, metadata);
 
         return super._registerRecipient(registerData, _sender);
     }
  
     function _allocate(bytes memory _data, address _sender) internal override onlyActiveAllocation nonReentrant {
-        (address recipientId, Permit2Data memory p2Data,) = abi.decode(_data, (address, Permit2Data, bytes));
+        (address recipientId, Permit2Data memory p2Data) = abi.decode(_data, (address, Permit2Data));
         bytes memory allocationData = abi.encode(recipientId, p2Data);
 
         super._allocate(allocationData, _sender);
