@@ -19,4 +19,12 @@ contract NFTsSetup is Test, Accounts {
     function nfts() public view returns (MockNFTs) {
         return _nfts;
     }
+
+    function lazyMintAmount() public pure returns (uint256) {
+        return 123;
+    }
+
+    function defaultRoyaltyFee() public pure returns (uint96) {
+        return 500;
+    }
 }
