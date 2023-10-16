@@ -293,23 +293,23 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// ========== Override ===========
     /// ===============================
 
-    function _registerRecipient(bytes memory _data, address _sender)
-        internal
-        override
-        onlyActiveRegistration
-        returns (address)
-    {
-        (address recipientId, address recipientAddress, Metadata memory metadata) =
-            abi.decode(_data, (address, address, Metadata));
-        bytes memory registerData = abi.encode(recipientId, recipientAddress, metadata);
+    // function _registerRecipient(bytes memory _data, address _sender)
+    //     internal
+    //     override
+    //     onlyActiveRegistration
+    //     returns (address)
+    // {
+    //     (address recipientId, address recipientAddress, Metadata memory metadata) =
+    //         abi.decode(_data, (address, address, Metadata));
+    //     bytes memory registerData = abi.encode(recipientId, recipientAddress, metadata);
 
-        return super._registerRecipient(registerData, _sender);
-    }
+    //     return super._registerRecipient(registerData, _sender);
+    // }
  
-    function _allocate(bytes memory _data, address _sender) internal override onlyActiveAllocation nonReentrant {
-        (address recipientId, Permit2Data memory p2Data) = abi.decode(_data, (address, Permit2Data));
-        bytes memory allocationData = abi.encode(recipientId, p2Data);
+    // function _allocate(bytes memory _data, address _sender) internal override onlyActiveAllocation nonReentrant {
+    //     (address recipientId, Permit2Data memory p2Data) = abi.decode(_data, (address, Permit2Data));
+    //     bytes memory allocationData = abi.encode(recipientId, p2Data);
 
-        super._allocate(allocationData, _sender);
-    }
+    //     super._allocate(allocationData, _sender);
+    // }
 }
