@@ -338,7 +338,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             currency,
             price,
             proofs,
-            allocationStartTime + 1000
+            allocationStartTime + 10000
         );
         bytes32 claimHash = _getClaimHash(claimData);
         bytes memory signature = _generateEIP712Signature(claimHash, 0);
@@ -483,7 +483,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
     function _getClaimHash(IClaimEligibility.Claim memory claimData) internal view returns (bytes32 structHash) {
         return keccak256(
             abi.encode(
-                _nfts.CLAIM_TYPEHASH,
+                _nfts.CLAIM_TYPEHASH(),
                 claimData.sender,
                 claimData.receiver,
                 claimData.tokenId,
