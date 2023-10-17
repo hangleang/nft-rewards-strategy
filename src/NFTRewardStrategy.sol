@@ -216,26 +216,26 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         recipientIdToBatchId[recipientId] = batchId;
     }
 
-    /// @notice Before allocation hook to check whether caller is eligible for claim the NFT via `verifyClaim` on the NFTs contract
-    /// @param _data The data to be decoded.
-    /// @param _sender The sender of the allocation
-    /// @custom:data (address recipientId, Permit2Data p2data, uint256 tokenId, uint256 qty, bytes32[] proofs)
-    function _beforeAllocate(bytes memory _data, address _sender) internal view override {
-        (address recipientId, Permit2Data memory p2Data, ClaimNFT memory claimNFTData) =
-            abi.decode(_data, (address, Permit2Data, ClaimNFT));
+    // /// @notice Before allocation hook to check whether caller is eligible for claim the NFT via `verifyClaim` on the NFTs contract
+    // /// @param _data The data to be decoded.
+    // /// @param _sender The sender of the allocation
+    // /// @custom:data (address recipientId, Permit2Data p2data, uint256 tokenId, uint256 qty, bytes32[] proofs)
+    // function _beforeAllocate(bytes memory _data, address _sender) internal view override {
+    //     (address recipientId, Permit2Data memory p2Data, ClaimNFT memory claimNFTData) =
+    //         abi.decode(_data, (address, Permit2Data, ClaimNFT));
 
-        uint256 batchId = recipientIdToBatchId[recipientId];
-        if (claimNFTData.tokenId > batchId) {
-            revert INVALID_TOKEN_ID();
-        }
+    //     uint256 batchId = recipientIdToBatchId[recipientId];
+    //     if (claimNFTData.tokenId > batchId) {
+    //         revert INVALID_TOKEN_ID();
+    //     }
 
-        uint256 amount = p2Data.permit.permitted.amount;
-        address token = p2Data.permit.permitted.token;
-        uint256 price = amount / claimNFTData.quantity;
+    //     uint256 amount = p2Data.permit.permitted.amount;
+    //     address token = p2Data.permit.permitted.token;
+    //     uint256 price = amount / claimNFTData.quantity;
 
-        // verify claim for amount of tokenId with given value
-        INFTs(nftAddress).verifyClaim(_sender, claimNFTData.tokenId, claimNFTData.quantity, token, price, claimNFTData.proofs);
-    }
+    //     // verify claim for amount of tokenId with given value
+    //     INFTs(nftAddress).verifyClaim(_sender, claimNFTData.tokenId, claimNFTData.quantity, token, price, claimNFTData.proofs);
+    // }
 
     /// @notice After allocation hook to transfer & lock tokens within the contract, mint NFT back to the caller.
     /// @param _data The encoded recipientId, amount and token
