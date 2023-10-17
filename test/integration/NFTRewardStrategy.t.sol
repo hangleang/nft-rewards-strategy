@@ -240,7 +240,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         
         // allocate to `recipientId`
         bytes32[] memory proofs;
-        __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, 0x0);
+        __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, "");
 
         // check balance after allocation
         __checkBalanceAfterAllocate(
@@ -273,12 +273,78 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         
         // allocate to `recipientId`
         bytes32[] memory proofs;
-        __allocate(recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, 0x0);
+        __allocate(recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, "");
 
         // check balance after allocation
         __checkBalanceAfterAllocate(
             recipientId, bob, recipientAddress(), tokenId, erc20Address, _allocatedBalance + amount, _totalLockedBalance + amount,
             _allocatorBalance - amount, _nftBalance + 10
+        );
+    }
+
+    function testRevert_allocate_ERC20_InvalidSigner() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        uint256 amount = 1 ether * 10;
+        address erc20Address = address(mockERC20);
+        __set_claim_condition(profile1_member1(), tokenId, erc20Address, 1 ether, 100);
+
+        // mint and approve the allocate amount
+        mockERC20.mint(bob, amount);
+        vm.prank(bob);
+        mockERC20.approve(address(permit2), type(uint256).max);
+
+        // get balance before allocation
+        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) = 
+            __getBalance(recipientId, bob, recipientAddress(), tokenId, erc20Address);
+        
+        // allocate to `recipientId` with fault PK
+        bytes32[] memory proofs;
+        __allocate(recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, abi.encodePacked(InvalidSigner.selector)); 
+
+        // check balance after fail allocation, should be the same as before
+        __checkBalanceAfterAllocate(
+            recipientId, bob, recipientAddress(), tokenId, erc20Address, _allocatedBalance, _totalLockedBalance,
+            _allocatorBalance, _nftBalance
+        );
+    }
+
+    function testRevert_allocate_ERC20_SignatureExpired() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        uint256 amount = 1 ether * 10;
+        address erc20Address = address(mockERC20);
+        __set_claim_condition(profile1_member1(), tokenId, erc20Address, 1 ether, 100);
+
+        // mint and approve the allocate amount
+        mockERC20.mint(bob, amount);
+        vm.prank(bob);
+        mockERC20.approve(address(permit2), type(uint256).max);
+
+        // get balance before allocation
+        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) = 
+            __getBalance(recipientId, bob, recipientAddress(), tokenId, erc20Address);
+        
+        // allocate to `recipientId` with fault PK
+        bytes32[] memory proofs;
+        __allocate(recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, abi.encodePacked(SignatureExpired.selector, uint256(0))); 
+
+        // check balance after fail allocation, should be the same as before
+        __checkBalanceAfterAllocate(
+            recipientId, bob, recipientAddress(), tokenId, erc20Address, _allocatedBalance, _totalLockedBalance,
+            _allocatorBalance, _nftBalance
         );
     }
 
@@ -384,7 +450,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             tokenId: tokenId,
             quantity: qty,
             proofs: proofs,
-            deadline: deadline,
+            deadline: allocationStartTime + 10000,
             signature: claimSignature
         });
 
@@ -399,7 +465,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         uint256 price, 
         bytes32[] memory proofs,
         uint256 claimerPK,
-        bytes4 errSelector
+        bytes memory errSelector
     ) internal {
         uint256 amount = qty * price;
         address claimer = vm.addr(claimerPK);
@@ -428,13 +494,15 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             price,
             proofs,
             _generateEIP712Signature(claimHash, claimerPK),
-            allocationStartTime + 10000,
-            claimerPK
+            bytes4(errSelector) == SignatureExpired.selector ? 0 : allocationStartTime + 10000,
+            bytes4(errSelector) == InvalidSigner.selector ? 0x12345 : claimerPK
         );
 
-        if (errSelector == 0x0) {
+        if (errSelector.length == 0) {
             vm.expectEmit(address(_strategy));
             emit Allocated(recipientId, amount, currency, claimer);
+        } else if (errSelector.length == 4) {
+            vm.expectRevert(bytes4(errSelector));
         } else {
             vm.expectRevert(errSelector);
         }
