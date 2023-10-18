@@ -421,6 +421,89 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
 
     /** 
      * ===============================
+     * =========== Claims ============
+     * ===============================
+    **/
+
+    function test_claim() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        uint256 amount = 1 ether * 10;
+        __set_claim_condition(profile1_member1(), tokenId, NATIVE, 1 ether, 100);
+
+        // mint the allocate amount
+        vm.deal(bob, amount);
+        
+        // allocate to `recipientId`
+        bytes32[] memory proofs;
+        __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, "");
+
+        // set block.timestamp to end of the allocation period
+        vm.warp(allocationEndTime + 1);
+        NFTRewardStrategy.Claim[] memory claim = new NFTRewardStrategy.Claim[](1);
+        claim[0] = NFTRewardStrategy.Claim({recipientId: recipientId, token: NATIVE});
+
+        vm.expectCall(recipientAddress(), amount, "");
+        // vm.expectEmit(true, false, false, true);
+        emit Claimed(recipientId, recipientAddress(), amount, NATIVE);
+
+        _strategy.claim(claim);
+    }
+
+    function testRevert_claim_ALLOCATION_NOT_ENDED() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        uint256 amount = 1 ether * 10;
+        __set_claim_condition(profile1_member1(), tokenId, NATIVE, 1 ether, 100);
+
+        // mint the allocate amount
+        vm.deal(bob, amount);
+        
+        // allocate to `recipientId`
+        bytes32[] memory proofs;
+        __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, "");
+
+        NFTRewardStrategy.Claim[] memory claim = new NFTRewardStrategy.Claim[](1);
+        claim[0] = NFTRewardStrategy.Claim({recipientId: recipientId, token: NATIVE});
+
+        vm.expectRevert(ALLOCATION_NOT_ENDED.selector);
+        _strategy.claim(claim);
+    }
+
+    function testRevert_claim_ZERO_AMOUNT() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        __set_claim_condition(profile1_member1(), tokenId, NATIVE, 1 ether, 100);
+
+        // set block.timestamp to end of the allocation period
+        vm.warp(allocationEndTime + 1);
+        NFTRewardStrategy.Claim[] memory claim = new NFTRewardStrategy.Claim[](1);
+        claim[0] = NFTRewardStrategy.Claim({recipientId: recipientId, token: NATIVE});
+
+        vm.expectRevert(INVALID.selector);
+        _strategy.claim(claim);
+    }
+
+    /** 
+     * ===============================
      * ========== Internal ===========
      * ===============================
     **/
