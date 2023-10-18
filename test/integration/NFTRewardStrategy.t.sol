@@ -215,6 +215,77 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
 
     /** 
      * ===============================
+     * ========== Eligible ===========
+     * ===============================
+    **/
+
+    function test_canAllocateTo() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        __set_claim_condition(profile1_member1(), tokenId, NATIVE, 1 ether, 100);
+
+        // verify `msg.sender` is eligible to allocate to the `recipientId`
+        vm.warp(allocationStartTime + 1);
+        vm.prank(randomAddress());
+        assertTrue(_strategy.canAllocateTo(recipientId, tokenId, 10, NATIVE, 1 ether, new bytes32[](0)));
+    }
+
+    function testRevert_canAllocateTo_Unavailable() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // verify `msg.sender` is eligible to allocate to the `recipientId`
+        vm.warp(allocationStartTime + 1);
+        vm.prank(randomAddress());
+        assertFalse(_strategy.canAllocateTo(recipientId, tokenId, 10, NATIVE, 1 ether, new bytes32[](0)));
+    }
+
+    function testRevert_canAllocateTo_Invalid_PriceOrCurrency() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        __set_claim_condition(profile1_member1(), tokenId, NATIVE, 1 ether, 100);
+
+        // verify `msg.sender` is eligible to allocate to the `recipientId`
+        vm.warp(allocationStartTime + 1);
+        vm.prank(randomAddress());
+        assertFalse(_strategy.canAllocateTo(recipientId, tokenId, 10, address(mockERC20), 0, new bytes32[](0)));
+    }
+
+    function testRevert_canAllocateTo_Zero_Quantity() public {
+        uint256 tokenId = _nfts.tokenId();
+        address recipientId = __register_recipient_with_lazyMint(lazyMintAmount());
+
+        address[] memory recipientIds = new address[](1);
+        recipientIds[0] = recipientId;
+        __update_recipient_status(recipientIds, IStrategy.Status.Accepted);
+
+        // use `project owner` to set claimCondition on `tokenId`
+        __set_claim_condition(profile1_member1(), tokenId, NATIVE, 1 ether, 100);
+
+        // verify `msg.sender` is eligible to allocate to the `recipientId`
+        vm.warp(allocationStartTime + 1);
+        vm.prank(randomAddress());
+        assertFalse(_strategy.canAllocateTo(recipientId, tokenId, 0, NATIVE, 1 ether, new bytes32[](0)));
+    }
+
+    /** 
+     * ===============================
      * ========== Allocate ===========
      * ===============================
     **/
