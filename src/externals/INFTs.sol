@@ -30,9 +30,7 @@ interface INFTs {
         address currency,
         uint256 pricePerToken,
         bytes32[] calldata proofs
-    )
-        external
-        view;
+    ) external view;
 
     function getSupplyClaimedByWallet(uint256 _tokenId, address _claimer) external view returns (uint256);
 

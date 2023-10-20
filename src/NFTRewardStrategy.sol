@@ -18,11 +18,6 @@ import {Metadata} from "allo/contracts/core/libraries/Metadata.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
 contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, ReentrancyGuardUpgradeable {
-    struct InitializeStrategyData {
-        address nftAddress;
-        InitializeData initData;
-    }
-
     /// @notice Stores the details of the allocations to claim.
     struct Claim {
         address recipientId;
@@ -84,10 +79,10 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     ///               uint64 _registrationEndTime, uint64 _allocationStartTime, uint64 _allocationEndTime,
     ///               address[] memory _allowedTokens)
     function initialize(uint256 _poolId, bytes memory _data) external virtual override onlyAllo {
-        (InitializeStrategyData memory initStrategyData) = abi.decode(_data, (InitializeStrategyData));
+        (InitializeData memory initData, address _nftAddress) = abi.decode(_data, (InitializeData, address));
         // address _nftAddress, InitializeData memory initializeData
-        nftAddress = initStrategyData.nftAddress;
-        __DonationVotingStrategy_init(_poolId, initStrategyData.initData);
+        __DonationVotingStrategy_init(_poolId, initData);
+        nftAddress = _nftAddress;
 
         emit Initialized(_poolId, _data);
     }
@@ -103,29 +98,31 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         uint256 claimsLength = _claims.length;
 
         // Loop through the claims
+        Claim calldata singleClaim;
+        Recipient memory singleRecipient;
         for (uint256 i; i < claimsLength;) {
-            Claim memory singleClaim = _claims[i];
-            Recipient memory recipient = _recipients[singleClaim.recipientId];
-            uint256 amount = claims[singleClaim.recipientId][singleClaim.token];
-
-            // If the claim amount is zero this will revert
-            if (amount == 0) {
-                revert INVALID();
-            }
+            singleClaim = _claims[i];
+            singleRecipient = _recipients[singleClaim.recipientId];
 
             address recipientId = singleClaim.recipientId;
             address token = singleClaim.token;
+
+            // If the claim amount is zero this will revert
+            uint256 amount = claims[recipientId][token];
+            if (amount == 0) {
+                revert INVALID();
+            }
 
             /// Delete the claim from the mapping
             delete claims[recipientId][token];
 
             // Transfer the tokens to the recipient
-            _transferAmount(token, recipient.recipientAddress, amount);
+            _transferAmount(token, singleRecipient.recipientAddress, amount);
 
             // Emit that the tokens have been claimed and sent to the recipient
-            emit Claimed(recipientId, recipient.recipientAddress, amount, token);
+            emit Claimed(recipientId, singleRecipient.recipientAddress, amount, token);
             unchecked {
-                i++;
+                ++i;
             }
         }
     }
@@ -175,27 +172,23 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// @custom:data if 'useRegistryAnchor' is 'false' (address recipientAddress, address registryAnchor, Metadata metadata, uint256 amount, uint96 fee)
     /// @param _sender The sender of the transaction
     function _afterRegisterRecipient(bytes memory _data, address _sender) internal override {
-        // bool isUsingRegistryAnchor;
         address recipientAddress;
         address registryAnchor;
         address recipientId;
         Metadata memory metadata;
-        uint256 amount;
+        uint256 nftAmount;
         uint96 fee;
 
         // decode data custom to this strategy
         if (useRegistryAnchor) {
-            (recipientId, recipientAddress, metadata, amount, fee) =
+            (recipientId, recipientAddress, metadata, nftAmount, fee) =
                 abi.decode(_data, (address, address, Metadata, uint256, uint96));
         } else {
-            (recipientAddress, registryAnchor, metadata, amount, fee) =
+            (recipientAddress, registryAnchor, metadata, nftAmount, fee) =
                 abi.decode(_data, (address, address, Metadata, uint256, uint96));
 
-            // Set this to 'true' if the registry anchor is not the zero address
-            bool isUsingRegistryAnchor = registryAnchor != address(0);
-
             // If using the 'registryAnchor' we set the 'recipientId' to the 'registryAnchor', otherwise we set it to the 'msg.sender'
-            recipientId = isUsingRegistryAnchor ? registryAnchor : _sender;
+            recipientId = registryAnchor != address(0) ? registryAnchor : _sender;
         }
 
         // If the metadata is required and the metadata is invalid this will revert
@@ -210,9 +203,8 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
 
         // NOTE: the royalty info need to be packed encoded since we decode the data by bytes
         // `_sender` is used to be a royalty recipient, and also authorizer for the batch token
-        bytes memory royaltyInfodata = abi.encodePacked(_sender, fee);
         uint256 batchId =
-            INFTs(nftAddress).lazyMint(amount, string.concat(protocol, metadata.pointer, "/"), royaltyInfodata);
+            INFTs(nftAddress).lazyMint(nftAmount, string.concat(protocol, metadata.pointer, "/"), abi.encodePacked(_sender, fee));
         recipientIdToBatchId[recipientId] = batchId;
     }
 
@@ -254,27 +246,16 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         // Update the total payout amount for the claim
         claims[recipientId][token] += amount;
 
-        // Form claim data to be attach with `claim` call
-        INFTs.Claim memory claimData = INFTs.Claim({
-            sender: _sender,
-            receiver: claimNFTData.receiver,
-            tokenId: claimNFTData.tokenId,
-            quantity: claimNFTData.quantity,
-            currency: token,
-            pricePerToken: price,
-            proofs: claimNFTData.proofs,
-            deadline: claimNFTData.deadline
-        });
+        // INFTs.Claim memory claimData = ;
 
         if (token == NATIVE) {
-            if (msg.value < amount) {
+            if (msg.value != amount) {
                 revert AMOUNT_MISMATCH();
             }
 
-            INFTs(nftAddress).claim{value: msg.value}(claimData, claimNFTData.signature);
+            // INFTs(nftAddress).claim{value: msg.value}(claimData, claimNFTData.signature);
             SafeTransferLib.safeTransferETH(address(this), amount);
         } else {
-            INFTs(nftAddress).claim(claimData, claimNFTData.signature);
             PERMIT2.permitTransferFrom(
                 // The permit message.
                 p2Data.permit,
@@ -287,6 +268,21 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
                 p2Data.signature
             );
         }
+
+        // Form claim data to be attach with `claim` call
+        INFTs(nftAddress).claim(
+            INFTs.Claim({
+                sender: _sender,
+                receiver: claimNFTData.receiver,
+                tokenId: claimNFTData.tokenId,
+                quantity: claimNFTData.quantity,
+                currency: token,
+                pricePerToken: price,
+                proofs: claimNFTData.proofs,
+                deadline: claimNFTData.deadline
+            }), 
+            claimNFTData.signature
+        );
     }
 
     /// ===============================
@@ -305,7 +301,7 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
 
     //     return super._registerRecipient(registerData, _sender);
     // }
- 
+
     // function _allocate(bytes memory _data, address _sender) internal override onlyActiveAllocation nonReentrant {
     //     (address recipientId, Permit2Data memory p2Data) = abi.decode(_data, (address, Permit2Data));
     //     bytes memory allocationData = abi.encode(recipientId, p2Data);

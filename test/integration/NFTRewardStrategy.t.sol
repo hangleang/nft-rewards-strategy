@@ -21,7 +21,8 @@ import {DonationVotingMerkleDistributionBaseStrategy} from
 
 // Test libraries
 import {PermitSignature} from "allo/lib/permit2/test/utils/PermitSignature.sol";
-import {DonationVotingMerkleDistributionBaseMockTest} from "allo/test/foundry/strategies/DonationVotingMerkleDistributionBase.t.sol";
+import {DonationVotingMerkleDistributionBaseMockTest} from
+    "allo/test/foundry/strategies/DonationVotingMerkleDistributionBase.t.sol";
 
 // Internal contracts
 import {NFTRewardStrategy} from "src/NFTRewardStrategy.sol";
@@ -52,6 +53,8 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
     // explicit set privateKey
     uint256 internal bobPK;
     address internal bob;
+
+    bytes32 private constant CLAIM_TYPEHASH = 0xab87cbadbc76f60ec344640b7ab0c6516a7a051c1823c727a720b74862452841;
 
     function _deployStrategy() internal override returns (address payable) {
         _strategy = new NFTRewardStrategy(
@@ -102,18 +105,16 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             poolProfile_id(),
             address(_strategy),
             abi.encode(
-                NFTRewardStrategy.InitializeStrategyData(
-                    address(_nfts),
-                    DonationVotingMerkleDistributionBaseStrategy.InitializeData(
-                        useRegistryAnchor,
-                        metadataRequired,
-                        registrationStartTime,
-                        registrationEndTime,
-                        allocationStartTime,
-                        allocationEndTime,
-                        allowedTokens
-                    )
-                )
+                DonationVotingMerkleDistributionBaseStrategy.InitializeData(
+                    useRegistryAnchor,
+                    metadataRequired,
+                    registrationStartTime,
+                    registrationEndTime,
+                    allocationStartTime,
+                    allocationEndTime,
+                    allowedTokens
+                ),
+                address(_nfts)
             ),
             NATIVE,
             _initAmount,
@@ -122,34 +123,12 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         );
     }
 
-    function testRevert_initializeStrategy_ALREADY_INITIALIZED() public {
-        vm.expectRevert(ALREADY_INITIALIZED.selector);
-
-        vm.prank(address(allo()));
-        strategy.initialize(
-            poolId,
-            abi.encode(
-                NFTRewardStrategy.InitializeStrategyData(
-                    address(_nfts),
-                    DonationVotingMerkleDistributionBaseStrategy.InitializeData(
-                        useRegistryAnchor,
-                        metadataRequired,
-                        registrationStartTime,
-                        registrationEndTime,
-                        allocationStartTime,
-                        allocationEndTime,
-                        allowedTokens
-                    )
-                )
-            )
-        );
-    }
-
-    /** 
+    /**
      * ===============================
      * ========== Register ===========
      * ===============================
-    **/
+     *
+     */
 
     function test_registerRecipientWithLazyMint() public {
         uint256 startTokenId = _nfts.tokenId();
@@ -159,20 +138,14 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
 
         // check strategy states
         __checkRecipientInfo(
-            recipientId,
-            true,
-            recipientAddress(),
-            1,
-            "basecidhash",
-            expectedBatchId,
-            IStrategy.Status.Pending
+            recipientId, true, recipientAddress(), 1, "basecidhash", expectedBatchId, IStrategy.Status.Pending
         );
 
         // check NFTs states
         __checkBatchNFT(
-            expectedBatchId, 
-            startTokenId, 
-            expectedBatchId, 
+            expectedBatchId,
+            startTokenId,
+            expectedBatchId,
             string.concat("ipfs://basecidhash/", startTokenId.toString()),
             address(_strategy),
             profile1_member1(),
@@ -213,11 +186,12 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         assertEq(strategy.statusesBitMap(0), 2);
     }
 
-    /** 
+    /**
      * ===============================
      * ========== Eligible ===========
      * ===============================
-    **/
+     *
+     */
 
     function test_canAllocateTo() public {
         uint256 tokenId = _nfts.tokenId();
@@ -284,11 +258,12 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         assertFalse(_strategy.canAllocateTo(recipientId, tokenId, 0, NATIVE, 1 ether, new bytes32[](0)));
     }
 
-    /** 
+    /**
      * ===============================
      * ========== Allocate ===========
      * ===============================
-    **/
+     *
+     */
 
     function test_allocate() public override {
         uint256 tokenId = _nfts.tokenId();
@@ -306,17 +281,24 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         vm.deal(bob, amount);
 
         // get balance before allocation
-        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) = 
+        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) =
             __getBalance(recipientId, bob, recipientAddress(), tokenId, NATIVE);
-        
+
         // allocate to `recipientId`
         bytes32[] memory proofs;
         __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, "");
 
         // check balance after allocation
         __checkBalanceAfterAllocate(
-            recipientId, bob, recipientAddress(), tokenId, NATIVE, _allocatedBalance + amount, _totalLockedBalance + amount,
-            _allocatorBalance - amount, _nftBalance + 10
+            recipientId,
+            bob,
+            recipientAddress(),
+            tokenId,
+            NATIVE,
+            _allocatedBalance + amount,
+            _totalLockedBalance + amount,
+            _allocatorBalance - amount,
+            _nftBalance + 10
         );
     }
 
@@ -339,17 +321,24 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         mockERC20.approve(address(permit2), type(uint256).max);
 
         // get balance before allocation
-        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) = 
+        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) =
             __getBalance(recipientId, bob, recipientAddress(), tokenId, erc20Address);
-        
+
         // allocate to `recipientId`
         bytes32[] memory proofs;
         __allocate(recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, "");
 
         // check balance after allocation
         __checkBalanceAfterAllocate(
-            recipientId, bob, recipientAddress(), tokenId, erc20Address, _allocatedBalance + amount, _totalLockedBalance + amount,
-            _allocatorBalance - amount, _nftBalance + 10
+            recipientId,
+            bob,
+            recipientAddress(),
+            tokenId,
+            erc20Address,
+            _allocatedBalance + amount,
+            _totalLockedBalance + amount,
+            _allocatorBalance - amount,
+            _nftBalance + 10
         );
     }
 
@@ -372,17 +361,26 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         mockERC20.approve(address(permit2), type(uint256).max);
 
         // get balance before allocation
-        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) = 
+        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) =
             __getBalance(recipientId, bob, recipientAddress(), tokenId, erc20Address);
-        
+
         // allocate to `recipientId` with fault PK
         bytes32[] memory proofs;
-        __allocate(recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, abi.encodePacked(InvalidSigner.selector)); 
+        __allocate(
+            recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, abi.encodePacked(InvalidSigner.selector)
+        );
 
         // check balance after fail allocation, should be the same as before
         __checkBalanceAfterAllocate(
-            recipientId, bob, recipientAddress(), tokenId, erc20Address, _allocatedBalance, _totalLockedBalance,
-            _allocatorBalance, _nftBalance
+            recipientId,
+            bob,
+            recipientAddress(),
+            tokenId,
+            erc20Address,
+            _allocatedBalance,
+            _totalLockedBalance,
+            _allocatorBalance,
+            _nftBalance
         );
     }
 
@@ -405,25 +403,42 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         mockERC20.approve(address(permit2), type(uint256).max);
 
         // get balance before allocation
-        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) = 
+        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) =
             __getBalance(recipientId, bob, recipientAddress(), tokenId, erc20Address);
-        
+
         // allocate to `recipientId` with fault PK
         bytes32[] memory proofs;
-        __allocate(recipientId, tokenId, 10, erc20Address, 1 ether, proofs, bobPK, abi.encodePacked(SignatureExpired.selector, uint256(0))); 
+        __allocate(
+            recipientId,
+            tokenId,
+            10,
+            erc20Address,
+            1 ether,
+            proofs,
+            bobPK,
+            abi.encodePacked(SignatureExpired.selector, uint256(0))
+        );
 
         // check balance after fail allocation, should be the same as before
         __checkBalanceAfterAllocate(
-            recipientId, bob, recipientAddress(), tokenId, erc20Address, _allocatedBalance, _totalLockedBalance,
-            _allocatorBalance, _nftBalance
+            recipientId,
+            bob,
+            recipientAddress(),
+            tokenId,
+            erc20Address,
+            _allocatedBalance,
+            _totalLockedBalance,
+            _allocatorBalance,
+            _nftBalance
         );
     }
 
-    /** 
+    /**
      * ===============================
      * =========== Claims ============
      * ===============================
-    **/
+     *
+     */
 
     function test_claim() public {
         uint256 tokenId = _nfts.tokenId();
@@ -439,7 +454,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
 
         // mint the allocate amount
         vm.deal(bob, amount);
-        
+
         // allocate to `recipientId`
         bytes32[] memory proofs;
         __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, "");
@@ -470,7 +485,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
 
         // mint the allocate amount
         vm.deal(bob, amount);
-        
+
         // allocate to `recipientId`
         bytes32[] memory proofs;
         __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, "");
@@ -502,13 +517,18 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         _strategy.claim(claim);
     }
 
-    /** 
+    /**
      * ===============================
      * ========== Internal ===========
      * ===============================
-    **/
+     *
+     */
 
-    function __generate_recipient_with_lazyMint_data(address _recipientId, address _recipientAddress, uint256 amountNFTs) internal pure returns (bytes memory) {
+    function __generate_recipient_with_lazyMint_data(
+        address _recipientId,
+        address _recipientAddress,
+        uint256 amountNFTs
+    ) internal pure returns (bytes memory) {
         Metadata memory metadata = Metadata({protocol: 1, pointer: "basecidhash"});
         return abi.encode(_recipientId, _recipientAddress, metadata, amountNFTs, defaultRoyaltyFee());
     }
@@ -531,8 +551,8 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         uint256 length = recipientIds.length;
         DonationVotingMerkleDistributionBaseStrategy.ApplicationStatus[] memory statuses =
             new DonationVotingMerkleDistributionBaseStrategy.ApplicationStatus[](length);
-        
-        for (uint256 i=0; i<length;) {
+
+        for (uint256 i = 0; i < length;) {
             statuses[i] = __buildStatusRow(i, uint8(_status));
 
             vm.expectEmit(address(_strategy));
@@ -547,7 +567,9 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         strategy.reviewRecipients(statuses);
     }
 
-    function __set_claim_condition(address _sender, uint256 tokenId, address currency, uint256 price, uint256 supply) internal {
+    function __set_claim_condition(address _sender, uint256 tokenId, address currency, uint256 price, uint256 supply)
+        internal
+    {
         if (supply < 10) {
             supply = 10;
         }
@@ -560,7 +582,9 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             merkleRoot: bytes32(""),
             pricePerToken: price,
             currency: currency,
-            metadata: ""
+            metadata: "",
+            onlyFrom: address(_strategy),
+            collectPrice: false
         });
 
         vm.prank(_sender);
@@ -568,12 +592,12 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
     }
 
     function __generate_allocate_with_claim_nfts_data(
-        address recipientId, 
+        address recipientId,
         address nftReceiver,
         uint256 tokenId,
         uint256 qty,
-        address currency, 
-        uint256 price, 
+        address currency,
+        uint256 price,
         bytes32[] memory proofs,
         bytes memory claimSignature,
         uint256 deadline,
@@ -582,20 +606,17 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         uint256 amount = qty * price;
 
         DonationVotingMerkleDistributionBaseStrategy.Permit2Data memory permit2Data =
-            DonationVotingMerkleDistributionBaseStrategy.Permit2Data({
-                permit: ISignatureTransfer.PermitTransferFrom({
-                    permitted: ISignatureTransfer.TokenPermissions({token: currency, amount: amount}),
-                    nonce: 0,
-                    deadline: deadline
-                }),
-                signature: ""
-            });
+        DonationVotingMerkleDistributionBaseStrategy.Permit2Data({
+            permit: ISignatureTransfer.PermitTransferFrom({
+                permitted: ISignatureTransfer.TokenPermissions({token: currency, amount: amount}),
+                nonce: 0,
+                deadline: deadline
+            }),
+            signature: ""
+        });
         if (currency != NATIVE) {
             permit2Data.signature = __getPermitTransferSignature(
-                permit2Data.permit, 
-                claimerPK, 
-                permit2.DOMAIN_SEPARATOR(), 
-                address(_strategy)
+                permit2Data.permit, claimerPK, permit2.DOMAIN_SEPARATOR(), address(_strategy)
             );
         }
 
@@ -612,11 +633,11 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
     }
 
     function __allocate(
-        address recipientId, 
-        uint256 tokenId, 
+        address recipientId,
+        uint256 tokenId,
         uint256 qty,
-        address currency, 
-        uint256 price, 
+        address currency,
+        uint256 price,
         bytes32[] memory proofs,
         uint256 claimerPK,
         bytes memory errSelector
@@ -626,16 +647,11 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         // uint256 deadline = allocationStartTime + 10000;
 
         // get claim signature for validation on NFT contract
-        bytes32 claimHash = _getClaimHash(_getClaimStruct(
-            claimer,
-            recipientAddress(),
-            tokenId,
-            qty,
-            currency,
-            price,
-            proofs,
-            allocationStartTime + 10000
-        ));
+        bytes32 claimHash = _getClaimHash(
+            _getClaimStruct(
+                claimer, recipientAddress(), tokenId, qty, currency, price, proofs, allocationStartTime + 10000
+            )
+        );
 
         // generate the custom allocation with claim NFTs data
         vm.warp(allocationStartTime + 1);
@@ -690,36 +706,35 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
     }
 
     function __checkBatchNFT(
-        uint256 batchId, 
-        uint256 tokenId, 
-        uint256 nextTokenId, 
-        string memory uri, 
-        address saleRecipient, 
-        address authorizer, 
-        address royaltyReceiver, 
+        uint256 batchId,
+        uint256 tokenId,
+        uint256 nextTokenId,
+        string memory uri,
+        address saleRecipient,
+        address authorizer,
+        address royaltyReceiver,
         uint96 royaltyFeeFraction
     ) internal {
-        ERC2981.RoyaltyInfo memory royaltyInfo = _nfts.royaltyInfoForBatch(batchId);
+        (address royaltyRecipient, uint96 royaltyFeeBps) = _nfts.royaltyInfoForBatch(batchId);
         assertEq(_nfts.tokenId(), nextTokenId);
         assertEq(_nfts.uri(tokenId), uri);
         assertEq(_nfts.saleRecipientForBatch(batchId), saleRecipient);
         assertEq(_nfts.authorizerForBatch(batchId), authorizer);
-        assertEq(royaltyInfo.receiver, royaltyReceiver);
-        assertEq(royaltyInfo.royaltyFraction, royaltyFeeFraction);
+        assertEq(royaltyRecipient, royaltyReceiver);
+        assertEq(royaltyFeeBps, royaltyFeeFraction);
     }
 
     function __getBalance(
         address recipientId,
-        address allocator, 
-        address nftReceiver, 
-        uint256 tokenId, 
+        address allocator,
+        address nftReceiver,
+        uint256 tokenId,
         address currency
-    ) internal view returns (
-        uint256 allocatedBalance, 
-        uint256 totalLockedBalance,
-        uint256 allocatorBalance,
-        uint256 nftBalance
-    ) {
+    )
+        internal
+        view
+        returns (uint256 allocatedBalance, uint256 totalLockedBalance, uint256 allocatorBalance, uint256 nftBalance)
+    {
         if (currency == NATIVE) {
             totalLockedBalance = address(_strategy).balance;
             allocatorBalance = allocator.balance;
@@ -735,16 +750,16 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
 
     function __checkBalanceAfterAllocate(
         address recipientId,
-        address allocator, 
-        address nftReceiver, 
-        uint256 tokenId, 
-        address currency, 
+        address allocator,
+        address nftReceiver,
+        uint256 tokenId,
+        address currency,
         uint256 allocatedBalance,
         uint256 lockedBalance,
         uint256 allocatorBalance,
         uint256 nftBalance
     ) internal {
-        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) = 
+        (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) =
             __getBalance(recipientId, allocator, nftReceiver, tokenId, currency);
         assertEq(_nftBalance, nftBalance);
         assertEq(_allocatorBalance, allocatorBalance);
@@ -752,18 +767,14 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         assertEq(_totalLockedBalance, lockedBalance);
     }
 
-    /** 
+    /**
      * ===============================
      * ========== Signature ==========
      * ===============================
-    **/
+     *
+     */
 
-    function _hashTypedDataV4(
-        address target,
-        string memory name,
-        string memory version,
-        bytes32 structHash
-    )
+    function _hashTypedDataV4(address target, string memory name, string memory version, bytes32 structHash)
         internal
         view
         virtual
@@ -786,11 +797,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         uint256 pricePerToken,
         bytes32[] memory proofs,
         uint256 deadline
-    )
-        internal
-        view
-        returns (IClaimEligibility.Claim memory claimData)
-    {
+    ) internal view returns (IClaimEligibility.Claim memory claimData) {
         if (deadline == 0) {
             deadline = block.timestamp;
         }
@@ -807,10 +814,10 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         });
     }
 
-    function _getClaimHash(IClaimEligibility.Claim memory claimData) internal view returns (bytes32 structHash) {
+    function _getClaimHash(IClaimEligibility.Claim memory claimData) internal pure returns (bytes32 structHash) {
         return keccak256(
             abi.encode(
-                _nfts.CLAIM_TYPEHASH(),
+                CLAIM_TYPEHASH,
                 claimData.sender,
                 claimData.receiver,
                 claimData.tokenId,
@@ -823,10 +830,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         );
     }
 
-    function _generateEIP712Signature(
-        bytes32 claimHash,
-        uint256 claimerPK
-    )
+    function _generateEIP712Signature(bytes32 claimHash, uint256 claimerPK)
         internal
         view
         returns (bytes memory signature)
