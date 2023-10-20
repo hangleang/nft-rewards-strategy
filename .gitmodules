@@ -7,3 +7,6 @@
 [submodule "lib/solmate"]
 	path = lib/solmate
 	url = https://github.com/transmissions11/solmate
+[submodule "lib/charii-contract"]
+	path = lib/charii-contract
+	url = https://github.com/dreamsLAB-kh/charii-contract
