@@ -1,12 +1,6 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-[submodule "lib/solmate"]
-	path = lib/solmate
-	url = https://github.com/transmissions11/solmate
 [submodule "lib/allo-v2"]
 	path = lib/allo-v2
 	url = https://github.com/allo-protocol/allo-v2
-[submodule "lib/charii-contract"]
-	path = lib/charii-contract
-	url = https://github.com/dreamsLAB-kh/charii-contract
