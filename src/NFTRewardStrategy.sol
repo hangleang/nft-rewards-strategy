@@ -2,20 +2,20 @@
 pragma solidity ^0.8.17;
 
 // Core Contracts
-import {DonationVotingMerkleDistributionBaseStrategy} from
+import { DonationVotingMerkleDistributionBaseStrategy } from
     "allo/contracts/strategies/donation-voting-merkle-base/DonationVotingMerkleDistributionBaseStrategy.sol";
 
 // Interfaces
-import {INFTs} from "./externals/INFTs.sol";
-import {ISignatureTransfer} from "permit2/ISignatureTransfer.sol";
+import { INFTs } from "./externals/INFTs.sol";
+import { ISignatureTransfer } from "permit2/ISignatureTransfer.sol";
 
 // External
-import {ReentrancyGuardUpgradeable} from
+import { ReentrancyGuardUpgradeable } from
     "openzeppelin-contracts-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 // Libraries
-import {Metadata} from "allo/contracts/core/libraries/Metadata.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
+import { Metadata } from "allo/contracts/core/libraries/Metadata.sol";
+import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
 
 contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, ReentrancyGuardUpgradeable {
     /// @notice Stores the details of the allocations to claim.
@@ -67,15 +67,20 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// ========= Initialize ==========
     /// ===============================
 
-    constructor(address _allo, string memory _name, ISignatureTransfer _permit2)
+    constructor(
+        address _allo,
+        string memory _name,
+        ISignatureTransfer _permit2
+    )
         DonationVotingMerkleDistributionBaseStrategy(_allo, _name, _permit2)
-    {}
+    { }
 
     /// @notice Initializes the strategy
     /// @dev This will revert if the strategy is already initialized and 'msg.sender' is not the 'Allo' contract.
     /// @param _poolId The 'poolId' to initialize
     /// @param _data The data to be decoded to initialize the strategy
-    /// @custom:data  address _nftAddress, InitializeData(bool _useRegistryAnchor, bool _metadataRequired, uint64 _registrationStartTime,
+    /// @custom:data  address _nftAddress, InitializeData(bool _useRegistryAnchor, bool _metadataRequired, uint64
+    /// _registrationStartTime,
     ///               uint64 _registrationEndTime, uint64 _allocationStartTime, uint64 _allocationEndTime,
     ///               address[] memory _allowedTokens)
     function initialize(uint256 _poolId, bytes memory _data) external virtual override onlyAllo {
@@ -134,7 +139,12 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         address _currency,
         uint256 _pricePerToken,
         bytes32[] calldata _proofs
-    ) public view onlyActiveAllocation returns (bool canAllocate) {
+    )
+        public
+        view
+        onlyActiveAllocation
+        returns (bool canAllocate)
+    {
         return _canAllocateTo(_recipientId, _tokenId, _quantity, _currency, _pricePerToken, _proofs);
     }
 
@@ -149,7 +159,11 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
         address _currency,
         uint256 _pricePerToken,
         bytes32[] calldata _proofs
-    ) internal view returns (bool canAllocate) {
+    )
+        internal
+        view
+        returns (bool canAllocate)
+    {
         uint256 batchId = recipientIdToBatchId[_recipientId];
         if (_tokenId > batchId) {
             return false;
@@ -166,10 +180,13 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     /// ============ Hooks ============
     /// ===============================
 
-    /// @notice After recipient registration hook to lazy mint amount of NFT with metadata and royalty info for the batch NFT
+    /// @notice After recipient registration hook to lazy mint amount of NFT with metadata and royalty info for the
+    /// batch NFT
     /// @param _data The data to be decoded.
-    /// @custom:data if 'useRegistryAnchor' is 'true' (address recipientId, address recipientAddress, Metadata metadata, uint256 amount, uint96 fee)
-    /// @custom:data if 'useRegistryAnchor' is 'false' (address recipientAddress, address registryAnchor, Metadata metadata, uint256 amount, uint96 fee)
+    /// @custom:data if 'useRegistryAnchor' is 'true' (address recipientId, address recipientAddress, Metadata metadata,
+    /// uint256 amount, uint96 fee)
+    /// @custom:data if 'useRegistryAnchor' is 'false' (address recipientAddress, address registryAnchor, Metadata
+    /// metadata, uint256 amount, uint96 fee)
     /// @param _sender The sender of the transaction
     function _afterRegisterRecipient(bytes memory _data, address _sender) internal override {
         address recipientAddress;
@@ -187,7 +204,8 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
             (recipientAddress, registryAnchor, metadata, nftAmount, fee) =
                 abi.decode(_data, (address, address, Metadata, uint256, uint96));
 
-            // If using the 'registryAnchor' we set the 'recipientId' to the 'registryAnchor', otherwise we set it to the 'msg.sender'
+            // If using the 'registryAnchor' we set the 'recipientId' to the 'registryAnchor', otherwise we set it to
+            // the 'msg.sender'
             recipientId = registryAnchor != address(0) ? registryAnchor : _sender;
         }
 
@@ -203,12 +221,14 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
 
         // NOTE: the royalty info need to be packed encoded since we decode the data by bytes
         // `_sender` is used to be a royalty recipient, and also authorizer for the batch token
-        uint256 batchId =
-            INFTs(nftAddress).lazyMint(nftAmount, string.concat(protocol, metadata.pointer, "/"), abi.encodePacked(_sender, fee));
+        uint256 batchId = INFTs(nftAddress).lazyMint(
+            nftAmount, string.concat(protocol, metadata.pointer, "/"), abi.encodePacked(_sender, fee)
+        );
         recipientIdToBatchId[recipientId] = batchId;
     }
 
-    // /// @notice Before allocation hook to check whether caller is eligible for claim the NFT via `verifyClaim` on the NFTs contract
+    // /// @notice Before allocation hook to check whether caller is eligible for claim the NFT via `verifyClaim` on the
+    // NFTs contract
     // /// @param _data The data to be decoded.
     // /// @param _sender The sender of the allocation
     // /// @custom:data (address recipientId, Permit2Data p2data, uint256 tokenId, uint256 qty, bytes32[] proofs)
@@ -226,7 +246,8 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     //     uint256 price = amount / claimNFTData.quantity;
 
     //     // verify claim for amount of tokenId with given value
-    //     INFTs(nftAddress).verifyClaim(_sender, claimNFTData.tokenId, claimNFTData.quantity, token, price, claimNFTData.proofs);
+    //     INFTs(nftAddress).verifyClaim(_sender, claimNFTData.tokenId, claimNFTData.quantity, token, price,
+    // claimNFTData.proofs);
     // }
 
     /// @notice After allocation hook to transfer & lock tokens within the contract, mint NFT back to the caller.
@@ -260,7 +281,7 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
                 // The permit message.
                 p2Data.permit,
                 // The transfer recipient and amount.
-                ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: amount}),
+                ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: amount }),
                 // Owner of the tokens and signer of the message.
                 _sender,
                 // The packed signature that was the result of signing
@@ -280,7 +301,7 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
                 pricePerToken: price,
                 proofs: claimNFTData.proofs,
                 deadline: claimNFTData.deadline
-            }), 
+            }),
             claimNFTData.signature
         );
     }

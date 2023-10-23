@@ -2,40 +2,40 @@
 pragma solidity ^0.8.17;
 
 // std lib
-import {Test} from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 // External lib
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {IClaimEligibility} from "charii-contract/interfaces/IClaimEligibility.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { ERC2981 } from "@openzeppelin/contracts/token/common/ERC2981.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { IClaimEligibility } from "charii-contract/interfaces/IClaimEligibility.sol";
 
 // Core contracts
-import {IAllo} from "allo/contracts/core/interfaces/IAllo.sol";
-import {IRegistry} from "allo/contracts/core/interfaces/IRegistry.sol";
-import {IStrategy} from "allo/contracts/core/interfaces/IStrategy.sol";
-import {ISignatureTransfer} from "permit2/ISignatureTransfer.sol";
-import {Metadata} from "allo/contracts/core/libraries/Metadata.sol";
-import {DonationVotingMerkleDistributionBaseStrategy} from
+import { IAllo } from "allo/contracts/core/interfaces/IAllo.sol";
+import { IRegistry } from "allo/contracts/core/interfaces/IRegistry.sol";
+import { IStrategy } from "allo/contracts/core/interfaces/IStrategy.sol";
+import { ISignatureTransfer } from "permit2/ISignatureTransfer.sol";
+import { Metadata } from "allo/contracts/core/libraries/Metadata.sol";
+import { DonationVotingMerkleDistributionBaseStrategy } from
     "allo/contracts/strategies/donation-voting-merkle-base/DonationVotingMerkleDistributionBaseStrategy.sol";
 
 // Test libraries
-import {PermitSignature} from "allo/lib/permit2/test/utils/PermitSignature.sol";
-import {DonationVotingMerkleDistributionBaseMockTest} from
+import { PermitSignature } from "allo/lib/permit2/test/utils/PermitSignature.sol";
+import { DonationVotingMerkleDistributionBaseMockTest } from
     "allo/test/foundry/strategies/DonationVotingMerkleDistributionBase.t.sol";
 
 // Internal contracts
-import {NFTRewardStrategy} from "src/NFTRewardStrategy.sol";
-import {INFTs} from "src/externals/INFTs.sol";
-import {NFTsSetup} from "../shared/NFTsSetup.sol";
+import { NFTRewardStrategy } from "src/NFTRewardStrategy.sol";
+import { INFTs } from "src/externals/INFTs.sol";
+import { NFTsSetup } from "../shared/NFTsSetup.sol";
 
 // Mock contracts
-import {MockERC20} from "allo/test/utils/MockERC20.sol";
-import {DonationVotingMerkleDistributionBaseMock} from "allo/test/utils/DonationVotingMerkleDistributionBaseMock.sol";
-import {Permit2} from "allo/test/utils/Permit2Mock.sol";
+import { MockERC20 } from "allo/test/utils/MockERC20.sol";
+import { DonationVotingMerkleDistributionBaseMock } from "allo/test/utils/DonationVotingMerkleDistributionBaseMock.sol";
+import { Permit2 } from "allo/test/utils/Permit2Mock.sol";
 
-import {console2 as console} from "forge-std/console2.sol";
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import { console2 as console } from "forge-std/console2.sol";
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 
 // opGoerliFork = vm.createFork(vm.envString("OP_GOERLI_RPC_URL"));
 // pgnSepoliaFork = vm.createFork(vm.envString("PGN_SEPOLIA_RPC_URL"));
@@ -84,7 +84,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         useRegistryAnchor = true;
         metadataRequired = true;
 
-        poolMetadata = Metadata({protocol: 1, pointer: "PoolMetadata"});
+        poolMetadata = Metadata({ protocol: 1, pointer: "PoolMetadata" });
 
         strategy = DonationVotingMerkleDistributionBaseMock(_deployStrategy());
         mockERC20 = new MockERC20();
@@ -101,7 +101,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         _initAmount = 1 ether;
         vm.deal(pool_admin(), _initAmount);
         vm.prank(pool_admin());
-        poolId = allo().createPoolWithCustomStrategy{value: _initAmount}(
+        poolId = allo().createPoolWithCustomStrategy{ value: _initAmount }(
             poolProfile_id(),
             address(_strategy),
             abi.encode(
@@ -462,7 +462,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         // set block.timestamp to end of the allocation period
         vm.warp(allocationEndTime + 1);
         NFTRewardStrategy.Claim[] memory claim = new NFTRewardStrategy.Claim[](1);
-        claim[0] = NFTRewardStrategy.Claim({recipientId: recipientId, token: NATIVE});
+        claim[0] = NFTRewardStrategy.Claim({ recipientId: recipientId, token: NATIVE });
 
         vm.expectCall(recipientAddress(), amount, "");
         // vm.expectEmit(true, false, false, true);
@@ -491,7 +491,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         __allocate(recipientId, tokenId, 10, NATIVE, 1 ether, proofs, bobPK, "");
 
         NFTRewardStrategy.Claim[] memory claim = new NFTRewardStrategy.Claim[](1);
-        claim[0] = NFTRewardStrategy.Claim({recipientId: recipientId, token: NATIVE});
+        claim[0] = NFTRewardStrategy.Claim({ recipientId: recipientId, token: NATIVE });
 
         vm.expectRevert(ALLOCATION_NOT_ENDED.selector);
         _strategy.claim(claim);
@@ -511,7 +511,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         // set block.timestamp to end of the allocation period
         vm.warp(allocationEndTime + 1);
         NFTRewardStrategy.Claim[] memory claim = new NFTRewardStrategy.Claim[](1);
-        claim[0] = NFTRewardStrategy.Claim({recipientId: recipientId, token: NATIVE});
+        claim[0] = NFTRewardStrategy.Claim({ recipientId: recipientId, token: NATIVE });
 
         vm.expectRevert(INVALID.selector);
         _strategy.claim(claim);
@@ -528,8 +528,12 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         address _recipientId,
         address _recipientAddress,
         uint256 amountNFTs
-    ) internal pure returns (bytes memory) {
-        Metadata memory metadata = Metadata({protocol: 1, pointer: "basecidhash"});
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        Metadata memory metadata = Metadata({ protocol: 1, pointer: "basecidhash" });
         return abi.encode(_recipientId, _recipientAddress, metadata, amountNFTs, defaultRoyaltyFee());
     }
 
@@ -567,7 +571,13 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         strategy.reviewRecipients(statuses);
     }
 
-    function __set_claim_condition(address _sender, uint256 tokenId, address currency, uint256 price, uint256 supply)
+    function __set_claim_condition(
+        address _sender,
+        uint256 tokenId,
+        address currency,
+        uint256 price,
+        uint256 supply
+    )
         internal
     {
         if (supply < 10) {
@@ -602,13 +612,17 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         bytes memory claimSignature,
         uint256 deadline,
         uint256 claimerPK
-    ) internal view returns (bytes memory) {
+    )
+        internal
+        view
+        returns (bytes memory)
+    {
         uint256 amount = qty * price;
 
         DonationVotingMerkleDistributionBaseStrategy.Permit2Data memory permit2Data =
         DonationVotingMerkleDistributionBaseStrategy.Permit2Data({
             permit: ISignatureTransfer.PermitTransferFrom({
-                permitted: ISignatureTransfer.TokenPermissions({token: currency, amount: amount}),
+                permitted: ISignatureTransfer.TokenPermissions({ token: currency, amount: amount }),
                 nonce: 0,
                 deadline: deadline
             }),
@@ -625,7 +639,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             tokenId: tokenId,
             quantity: qty,
             proofs: proofs,
-            deadline: allocationStartTime + 10000,
+            deadline: allocationStartTime + 10_000,
             signature: claimSignature
         });
 
@@ -641,7 +655,9 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         bytes32[] memory proofs,
         uint256 claimerPK,
         bytes memory errSelector
-    ) internal {
+    )
+        internal
+    {
         uint256 amount = qty * price;
         address claimer = vm.addr(claimerPK);
         // uint256 deadline = allocationStartTime + 10000;
@@ -649,7 +665,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         // get claim signature for validation on NFT contract
         bytes32 claimHash = _getClaimHash(
             _getClaimStruct(
-                claimer, recipientAddress(), tokenId, qty, currency, price, proofs, allocationStartTime + 10000
+                claimer, recipientAddress(), tokenId, qty, currency, price, proofs, allocationStartTime + 10_000
             )
         );
 
@@ -664,7 +680,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             price,
             proofs,
             _generateEIP712Signature(claimHash, claimerPK),
-            bytes4(errSelector) == SignatureExpired.selector ? 0 : allocationStartTime + 10000,
+            bytes4(errSelector) == SignatureExpired.selector ? 0 : allocationStartTime + 10_000,
             bytes4(errSelector) == InvalidSigner.selector ? 0x12345 : claimerPK
         );
 
@@ -679,7 +695,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
 
         vm.prank(claimer);
         if (currency == NATIVE) {
-            allo().allocate{value: amount}(poolId, data);
+            allo().allocate{ value: amount }(poolId, data);
         } else {
             allo().allocate(poolId, data);
         }
@@ -693,7 +709,9 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         string memory _baseURICID,
         uint256 _batchId,
         IStrategy.Status _status
-    ) internal {
+    )
+        internal
+    {
         DonationVotingMerkleDistributionBaseStrategy.Recipient memory _recipient = strategy.getRecipient(recipientId);
         assertEq(_recipient.useRegistryAnchor, _useRegistryAnchor);
         assertEq(_recipient.recipientAddress, _recipientAddress);
@@ -714,7 +732,9 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         address authorizer,
         address royaltyReceiver,
         uint96 royaltyFeeFraction
-    ) internal {
+    )
+        internal
+    {
         (address royaltyRecipient, uint96 royaltyFeeBps) = _nfts.royaltyInfoForBatch(batchId);
         assertEq(_nfts.tokenId(), nextTokenId);
         assertEq(_nfts.uri(tokenId), uri);
@@ -758,7 +778,9 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         uint256 lockedBalance,
         uint256 allocatorBalance,
         uint256 nftBalance
-    ) internal {
+    )
+        internal
+    {
         (uint256 _allocatedBalance, uint256 _totalLockedBalance, uint256 _allocatorBalance, uint256 _nftBalance) =
             __getBalance(recipientId, allocator, nftReceiver, tokenId, currency);
         assertEq(_nftBalance, nftBalance);
@@ -774,7 +796,12 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
      *
      */
 
-    function _hashTypedDataV4(address target, string memory name, string memory version, bytes32 structHash)
+    function _hashTypedDataV4(
+        address target,
+        string memory name,
+        string memory version,
+        bytes32 structHash
+    )
         internal
         view
         virtual
@@ -797,7 +824,11 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         uint256 pricePerToken,
         bytes32[] memory proofs,
         uint256 deadline
-    ) internal view returns (IClaimEligibility.Claim memory claimData) {
+    )
+        internal
+        view
+        returns (IClaimEligibility.Claim memory claimData)
+    {
         if (deadline == 0) {
             deadline = block.timestamp;
         }
@@ -830,7 +861,10 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
         );
     }
 
-    function _generateEIP712Signature(bytes32 claimHash, uint256 claimerPK)
+    function _generateEIP712Signature(
+        bytes32 claimHash,
+        uint256 claimerPK
+    )
         internal
         view
         returns (bytes memory signature)

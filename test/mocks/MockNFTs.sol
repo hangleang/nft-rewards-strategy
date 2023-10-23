@@ -5,5 +5,5 @@ import "charii-contract/ChariiNFTs.sol";
 
 contract MockNFTs is ChariiNFTs {
     // 5% in default royalty, 1% in platform fee
-    constructor(address owner) ChariiNFTs("ChariiNFTs", "CHARII", owner, owner, owner, 500, 100) {}
+    constructor(address owner) ChariiNFTs("ChariiNFTs", "CHARII", owner, owner, owner, 500, 100) { }
 }

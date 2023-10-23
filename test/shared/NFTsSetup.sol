@@ -3,9 +3,9 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 
-import {Accounts} from "allo/test/foundry/shared/Accounts.sol";
+import { Accounts } from "allo/test/foundry/shared/Accounts.sol";
 // import {INFTs} from "src/externals/INFTs.sol";
-import {MockNFTs} from "../mocks/MockNFTs.sol";
+import { MockNFTs } from "../mocks/MockNFTs.sol";
 
 contract NFTsSetup is Test, Accounts {
     MockNFTs internal _nfts;
