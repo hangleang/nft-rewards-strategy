@@ -85,7 +85,6 @@ contract NFTRewardStrategy is DonationVotingMerkleDistributionBaseStrategy, Reen
     ///               address[] memory _allowedTokens)
     function initialize(uint256 _poolId, bytes memory _data) external virtual override onlyAllo {
         (InitializeData memory initData, address _nftAddress) = abi.decode(_data, (InitializeData, address));
-        // address _nftAddress, InitializeData memory initializeData
         __DonationVotingStrategy_init(_poolId, initData);
         nftAddress = _nftAddress;
 
