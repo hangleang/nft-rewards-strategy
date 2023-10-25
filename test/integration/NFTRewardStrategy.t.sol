@@ -147,7 +147,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             startTokenId,
             expectedBatchId,
             string.concat("ipfs://basecidhash/", startTokenId.toString()),
-            address(_strategy),
+            profile1_member1(),
             profile1_member1(),
             profile1_member1(),
             defaultRoyaltyFee()
@@ -593,8 +593,7 @@ contract NFTRewardStrategyTest is DonationVotingMerkleDistributionBaseMockTest, 
             pricePerToken: price,
             currency: currency,
             metadata: "",
-            onlyFrom: address(_strategy),
-            collectPrice: false
+            onlyFrom: address(_strategy)
         });
 
         vm.prank(_sender);

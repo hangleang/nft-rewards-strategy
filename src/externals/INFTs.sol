@@ -2,6 +2,19 @@
 pragma solidity ^0.8.17;
 
 interface INFTs {
+    struct ClaimCondition {
+        uint256 startTimestamp;
+        uint256 endTimestamp;
+        uint256 maxClaimableSupply;
+        uint256 supplyClaimed;
+        uint256 quantityLimitPerWallet;
+        bytes32 merkleRoot;
+        uint256 pricePerToken;
+        address currency;
+        string metadata;
+        address onlyFrom;
+    }
+
     struct Claim {
         address sender;
         address receiver;
@@ -20,6 +33,8 @@ interface INFTs {
     )
         external
         returns (uint256 batchId);
+
+    function setClaimConditions(uint256 tokenId, ClaimCondition calldata phase, bool resetClaimEligibility) external;
 
     function authorizerForBatch(uint256 _batchId) external view returns (address);
 
@@ -41,4 +56,6 @@ interface INFTs {
     function getSupplyClaimedByWallet(uint256 _tokenId, address _claimer) external view returns (uint256);
 
     function getActiveClaimConditionId(uint256 _tokenId) external view returns (bytes32);
+
+    function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 }
