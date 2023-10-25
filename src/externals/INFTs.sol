@@ -13,9 +13,8 @@ interface INFTs {
         address currency;
         string metadata;
         address onlyFrom;
-        bool collectPrice;
     }
-    
+
     struct Claim {
         address sender;
         address receiver;
@@ -57,4 +56,6 @@ interface INFTs {
     function getSupplyClaimedByWallet(uint256 _tokenId, address _claimer) external view returns (uint256);
 
     function getActiveClaimConditionId(uint256 _tokenId) external view returns (bytes32);
+
+    function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 }

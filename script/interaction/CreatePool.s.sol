@@ -14,7 +14,8 @@ import { DonationVotingMerkleDistributionBaseStrategy } from
 /// @notice This script is used to create pool with test data for the Allo V2 contracts
 /// @dev Use this to run
 ///      'source .env' if you are using a .env file for your rpc-url
-///      'forge script script/interaction/CreatePool.s.sol:CreatePool --rpc-url https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
+///      'forge script script/interaction/CreatePool.s.sol:CreatePool --rpc-url
+/// https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
 contract CreatePool is Script, Config {
     // Initialize the Allo Interface
     Allo allo = Allo(ALLO);
@@ -42,35 +43,29 @@ contract CreatePool is Script, Config {
             DonationVotingMerkleDistributionBaseStrategy.InitializeData(
                 true,
                 true,
-                uint64(block.timestamp + 500),
-                uint64(block.timestamp + 10000),
-                uint64(block.timestamp + 20000),
-                uint64(block.timestamp + 30000),
+                uint64(block.timestamp + 1 minutes),
+                uint64(block.timestamp + 1 days),
+                uint64(block.timestamp + 1 hours),
+                uint64(block.timestamp + 1 weeks),
                 allowedTokens
             ),
             address(NFT)
         );
 
-        Metadata memory metadata = Metadata({protocol: 1, pointer: METADATA_POINTER});
+        Metadata memory metadata = Metadata({ protocol: 1, pointer: METADATA_POINTER });
 
         address deployer = vm.addr(deployerPrivateKey);
         address[] memory managers = new address[](1);
         managers[0] = deployer;
 
         // manually clone the strategy contract
-        address strategy = Clone.createClone(address(STRATEGY_IMPL), 0);
+        address strategy = Clone.createClone(address(STRATEGY_IMPL), NONCE);
         console.log("Strategy cloned");
         console.log(strategy);
 
         uint256 initFunding = 0.01 ether;
-        uint256 poolId = allo.createPoolWithCustomStrategy{value: initFunding}(
-            POOL_CREATOR_PROFILE_ID,
-            strategy,
-            encodedStrategyData,
-            NATIVE,
-            initFunding,
-            metadata,
-            managers
+        uint256 poolId = allo.createPoolWithCustomStrategy{ value: initFunding }(
+            POOL_CREATOR_PROFILE_ID, strategy, encodedStrategyData, NATIVE, initFunding, metadata, managers
         );
 
         console.log("Pool created");

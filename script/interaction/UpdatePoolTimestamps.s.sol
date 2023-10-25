@@ -6,10 +6,12 @@ import { Config } from "../Config.sol";
 
 import { NFTRewardStrategy } from "src/NFTRewardStrategy.sol";
 
-/// @notice This script is used to update pool registration & allocation timestamps with test data for the Allo V2 contracts
+/// @notice This script is used to update pool registration & allocation timestamps with test data for the Allo V2
+/// contracts
 /// @dev Use this to run
 ///      'source .env' if you are using a .env file for your rpc-url
-///      'forge script script/interaction/UpdatePoolTimestamps.s.sol:UpdatePoolTimestamps --rpc-url https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
+///      'forge script script/interaction/UpdatePoolTimestamps.s.sol:UpdatePoolTimestamps --rpc-url
+/// https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
 contract UpdatePoolTimestamps is Script, Config {
     // Initialize the Strategy contract
     NFTRewardStrategy strategy = NFTRewardStrategy(payable(address(STRATEGY)));

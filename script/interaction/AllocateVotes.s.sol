@@ -17,7 +17,8 @@ import { NFTRewardStrategy } from "src/NFTRewardStrategy.sol";
 /// @notice This script is used to allocate vote to recipient with test data for the Allo V2 contracts
 /// @dev Use this to run
 ///      'source .env' if you are using a .env file for your rpc-url
-///      'forge script script/interaction/AllocateVotes.s.sol:AllocateVotes --rpc-url https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
+///      'forge script script/interaction/AllocateVotes.s.sol:AllocateVotes --rpc-url
+/// https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
 contract AllocateVotes is Script, Config {
     // Initialize the Allo Interface
     Allo allo = Allo(ALLO);
@@ -27,24 +28,21 @@ contract AllocateVotes is Script, Config {
         vm.startBroadcast(privateKey);
         address sender = vm.addr(privateKey);
 
-        console.log("Allo Proxy ==> %s", ALLO);
+        console.log("Allo Proxy ==> %s", address(allo));
 
         // init permit transfer & sign claim NFTs
-        uint256 pricePerToken = 0.001 ether;
+        uint256 pricePerToken = TOKEN_PRICE;
         uint256 qty = 1;
         uint256 deadline = block.timestamp + 10 minutes;
         ISignatureTransfer.TokenPermissions memory tokenPermissions =
-            ISignatureTransfer.TokenPermissions({token: address(NATIVE), amount: qty * pricePerToken});
+            ISignatureTransfer.TokenPermissions({ token: address(NATIVE), amount: qty * pricePerToken });
         ISignatureTransfer.PermitTransferFrom memory permit =
-            ISignatureTransfer.PermitTransferFrom({permitted: tokenPermissions, nonce: 0, deadline: deadline});
+            ISignatureTransfer.PermitTransferFrom({ permitted: tokenPermissions, nonce: 0, deadline: deadline });
         DonationVotingMerkleDistributionBaseStrategy.Permit2Data memory permit2Data =
-        DonationVotingMerkleDistributionBaseStrategy.Permit2Data({
-            permit: permit,
-            signature: ""
-            // signature: abi.encodePacked(
-            //     uint8(1), uint8(27), address(0x1fD06f088c720bA3b7a3634a8F021Fdd485DcA42), uint8(0), uint8(0)
-            //     )
-        });
+            DonationVotingMerkleDistributionBaseStrategy.Permit2Data({ permit: permit, signature: "" });
+        // signature: abi.encodePacked(
+        //     uint8(1), uint8(27), address(0x1fD06f088c720bA3b7a3634a8F021Fdd485DcA42), uint8(0), uint8(0)
+        //     )
 
         IClaimEligibility.Claim memory claimData = _getClaimStruct(
             sender, sender, RECIPIENT_1_TOKEN_ID, qty, NATIVE, pricePerToken, new bytes32[](0), deadline
@@ -58,17 +56,30 @@ contract AllocateVotes is Script, Config {
             deadline: claimData.deadline,
             signature: _generateEIP712Signature(claimHash, privateKey)
         });
-        
+
+        // set claimData for recipient2
+        claimData.tokenId = RECIPIENT_2_TOKEN_ID - 1;
+        claimHash = _getClaimHash(claimData);
+        NFTRewardStrategy.ClaimNFT memory claimNFTFromRecipient2 = NFTRewardStrategy.ClaimNFT({
+            receiver: claimData.receiver,
+            tokenId: claimData.tokenId,
+            quantity: claimData.quantity,
+            proofs: claimData.proofs,
+            deadline: claimData.deadline,
+            signature: _generateEIP712Signature(claimHash, privateKey)
+        });
+
         // encode data for allocations
-        bytes[] memory allocateData = new bytes[](1);
+        bytes[] memory allocateData = new bytes[](2);
         allocateData[0] = abi.encode(RECIPIENT_1_ANCHOR_ID, permit2Data, claimNFTFromRecipient1);
-        // allocateData[1] = abi.encode(POOL_ANCHOR_ID, permit2Data);
-        uint256[] memory poolIds = new uint256[](1);
+        allocateData[1] = abi.encode(RECIPIENT_1_ANCHOR_ID, permit2Data, claimNFTFromRecipient2);
+        uint256[] memory poolIds = new uint256[](2);
         poolIds[0] = POOL_ID;
-        // poolIds[1] = POOL_ID;
+        poolIds[1] = POOL_ID;
 
         // call batchAllocate with those allocations
-        allo.allocate{value: qty * pricePerToken}(poolIds[0], allocateData[0]);
+        allo.allocate{ value: pricePerToken * qty }(poolIds[0], allocateData[0]);
+        allo.allocate{ value: pricePerToken * qty }(poolIds[1], allocateData[1]);
 
         vm.stopBroadcast();
     }

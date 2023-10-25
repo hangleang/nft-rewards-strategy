@@ -19,13 +19,13 @@ import { NFTRewardStrategy } from "src/NFTRewardStrategy.sol";
 //     address currency;
 //     string metadata;
 //     address onlyFrom;
-//     bool collectPrice;
 // }
 
 /// @notice This script is used to set claim condition for a tokenId with test data for the Allo V2 contracts
 /// @dev Use this to run
 ///      'source .env' if you are using a .env file for your rpc-url
-///      'forge script script/interaction/SetClaimCondition.s.sol:SetClaimCondition --rpc-url https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
+///      'forge script script/interaction/SetClaimCondition.s.sol:SetClaimCondition --rpc-url
+/// https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
 contract SetClaimCondition is Script, Config {
     // Initialize the NFTs contract
     INFTs nfts = INFTs(NFT);
@@ -33,62 +33,59 @@ contract SetClaimCondition is Script, Config {
     // Initialize the Strategy contract
     NFTRewardStrategy strategy = NFTRewardStrategy(payable(address(STRATEGY)));
 
+    uint256 constant nftAmount = RECIPIENT_2_NFT_AMOUNT;
+    uint256 constant startTokenId = RECIPIENT_2_TOKEN_ID;
+
     // IMulticall3 multicall3 = IMulticall3(address(MULTICALL3_ADDRESS));
 
     function run() external {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(privateKey);
 
-        nfts.setClaimConditions(
-            RECIPIENT_1_TOKEN_ID, 
-            INFTs.ClaimCondition(
-                strategy.allocationStartTime(),
-                strategy.allocationEndTime(),
-                1000,
-                0,
-                10,
-                bytes32(0),
-                0.001 ether,
-                NATIVE,
-                string.concat("ipfs://", METADATA_POINTER),
-                STRATEGY,
+        // nfts.setClaimConditions(
+        //     RECIPIENT_1_TOKEN_ID,
+        //     INFTs.ClaimCondition(
+        //         strategy.allocationStartTime(),
+        //         strategy.allocationEndTime(),
+        //         1000,
+        //         0,
+        //         10,
+        //         bytes32(0),
+        //         0.001 ether,
+        //         NATIVE,
+        //         string.concat("ipfs://", METADATA_POINTER),
+        //         STRATEGY
+        //     ),
+        //     false
+        // );
+
+        bytes[] memory callData = new bytes[](nftAmount);
+
+        for (uint256 i = 0; i < nftAmount;) {
+            callData[i] = abi.encodeWithSelector(
+                INFTs.setClaimConditions.selector,
+                startTokenId + i,
+                INFTs.ClaimCondition(
+                    strategy.allocationStartTime(),
+                    strategy.allocationEndTime(),
+                    1000,
+                    0,
+                    10,
+                    bytes32(0),
+                    TOKEN_PRICE,
+                    NATIVE,
+                    string.concat("ipfs://", METADATA_POINTER),
+                    address(strategy)
+                ),
                 false
-            ), 
-            false
-        );
+            );
 
-        // IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](RECIPIENT_1_NFT_AMOUNT - 1);
+            unchecked {
+                ++i;
+            }
+        }
 
-        // for (uint256 i=1; i<RECIPIENT_1_NFT_AMOUNT - 1;) {
-        //     calls[i] = IMulticall3.Call3({
-        //         target: NFT,
-        //         allowFailure: false,
-        //         callData: abi.encodeWithSelector(
-        //             INFTs.setClaimConditions.selector, 
-        //             RECIPIENT_1_TOKEN_ID + i, 
-        //             INFTs.ClaimCondition(
-        //                 strategy.allocationStartTime(),
-        //                 strategy.allocationEndTime(),
-        //                 1000,
-        //                 0,
-        //                 10,
-        //                 bytes32(0),
-        //                 0.001 ether,
-        //                 NATIVE,
-        //                 string.concat("ipfs://", METADATA_POINTER),
-        //                 STRATEGY,
-        //                 false
-        //             ), 
-        //             false
-        //         )
-        //     });
-
-        //     unchecked {
-        //         ++i;
-        //     }
-        // }
-
-        // multicall3.aggregate3(calls);
+        nfts.multicall(callData);
 
         vm.stopBroadcast();
     }

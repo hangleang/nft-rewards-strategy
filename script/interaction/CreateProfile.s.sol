@@ -11,7 +11,8 @@ import { Metadata } from "allo/contracts/core/libraries/Metadata.sol";
 /// @notice This script is used to create profile with test data for the Allo V2 contracts
 /// @dev Use this to run
 ///      'source .env' if you are using a .env file for your rpc-url
-///      'forge script script/interaction/CreateProfile.s.sol:CreateProfile --rpc-url https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
+///      'forge script script/interaction/CreateProfile.s.sol:CreateProfile --rpc-url
+/// https://goerli.infura.io/v3/$API_KEY_INFURA --broadcast -vvvv'
 contract CreateProfile is Script, Config {
     // Adding a nonce for reusability
     uint256 nonce = block.timestamp;
@@ -39,11 +40,11 @@ contract CreateProfile is Script, Config {
 
         // create profile for pool managers
         members[0] = address(deployer);
-        members[1] = POOL_MANAGER; 
+        members[1] = POOL_MANAGER;
 
         // Create a profile
         bytes32 profileId = registry.createProfile(
-            nonce++, "Test Profile", Metadata({protocol: 1, pointer: METADATA_POINTER}), deployer, members
+            nonce++, "Test Profile", Metadata({ protocol: 1, pointer: METADATA_POINTER }), deployer, members
         );
         IRegistry.Profile memory profile = registry.getProfileById(profileId);
         console.log("Profile created");

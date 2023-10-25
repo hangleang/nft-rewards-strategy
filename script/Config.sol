@@ -12,9 +12,11 @@ contract Config {
     string public constant METADATA_POINTER = "bafybeif43xtcb7zfd6lx7rfq42wjvpkbqgoo7qxrczbj4j4iwfl5aaqv2q";
     address public constant STRATEGY_IMPL = 0x67FD4c6fD422805E162cdA354ACcE9Ce32A6153B;
 
+    // NOTE: increase the `NONCE` before create new pool
     // TODO: update this when we deploy new strategy/strategies
-    address public constant STRATEGY = 0xE2b220B7A9E6D5c8132B3975D159dA9D149C87b9;
-    uint256 public constant POOL_ID = 19;
+    uint256 public constant NONCE = 1;
+    address public constant STRATEGY = 0xCf1EBf2af339bDDA6214f484cb11831B81B40d1B;
+    uint256 public constant POOL_ID = 20;
 
     // pool creator profile ID & anchor address
     bytes32 public constant POOL_CREATOR_PROFILE_ID = 0x17239d14834b393602080aa284d039185c79f5ccc6e7abd1afdc37cf8c97f374;
@@ -33,9 +35,9 @@ contract Config {
     address public constant RECIPIENT_2_MEMBER_1 = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
     address public constant RECIPIENT_2_MEMBER_2 = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
 
-    // increase tokenId when try to setClaimCondition
-    uint256 public constant RECIPIENT_1_TOKEN_ID = 11;
+    uint256 public constant RECIPIENT_1_TOKEN_ID = 1;
     uint256 public constant RECIPIENT_1_NFT_AMOUNT = 10;
-    uint256 public constant RECIPIENT_2_TOKEN_ID = 21;
+    uint256 public constant RECIPIENT_2_TOKEN_ID = 11;
     uint256 public constant RECIPIENT_2_NFT_AMOUNT = 100;
+    uint256 public constant TOKEN_PRICE = 0.001 ether;
 }
